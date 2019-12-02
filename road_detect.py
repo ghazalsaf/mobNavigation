@@ -58,9 +58,10 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=3):
 
 if __name__=="__main__":
 
-    image = png.read_png_int('/Users/jeong-yeonji/kitti/data_road/training/image_2/um_000000.png')
+    image = png.read_png_int('/Users/junho/PycharmProjects/road_detection/data_road/training/image_2/um_000000.png')
     height, width = image.shape[:2]
-    # plt.imshow(image)
+    plt.figure()
+    plt.imshow(image)
 
     region_of_interest_vertices = [
         [0, height],
@@ -78,9 +79,21 @@ if __name__=="__main__":
     # plt.show()
 
     # Convert to grayscale here.
-    gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    #gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    ORANGE_MIN = np.array([0, 0, 180],np.uint8)
+    ORANGE_MAX = np.array([360, 255, 255],np.uint8)
+    blur_img = cv2.GaussianBlur(image,(5,5),0)
+    plt.figure()
+    plt.imshow(blur_img)
+    hsv_img = cv2.cvtColor(blur_img, cv2.COLOR_BGR2HSV)
+
+    frame_threshed = cv2.inRange(hsv_img, ORANGE_MIN, ORANGE_MAX)
+    plt.figure()
+    plt.imshow(frame_threshed)
+
     # Call Canny Edge Detection here.
-    cannyed_image = cv2.Canny(gray_image, 50, 200)
+    cannyed_image = cv2.Canny(frame_threshed, 50, 200)
 
     # Moved the cropping operation to the end of the pipeline.
     cropped_image = region_of_interest_gray(
@@ -94,8 +107,8 @@ if __name__=="__main__":
         theta=np.pi / 60,
         threshold=160,
         lines=np.array([]),
-        minLineLength=40,
-        maxLineGap=25
+        minLineLength=0,
+        maxLineGap=50
     )
 
     line_image = draw_lines(image, lines)
