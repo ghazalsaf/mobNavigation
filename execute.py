@@ -5,25 +5,26 @@ import numpy as np
 import matplotlib._png as png
 import sklearn.linear_model
 import sys
+import timeit
 
 #%matplotlib inline
 #%config InlineBackend.figure_format = 'retina'
 
 
-def show_images(images, cmap=None):
-    cols = 2
-    rows = (len(images) + 1) // cols
-
-    plt.figure(figsize=(10, 11))
-    for i, image in enumerate(images):
-        plt.subplot(rows, cols, i + 1)
-        # use gray scale color map if there is only one channel
-        cmap = 'gray' if len(image.shape) == 2 else cmap
-        plt.imshow(image, cmap=cmap)
-        plt.xticks([])
-        plt.yticks([])
-    plt.tight_layout(pad=0, h_pad=0, w_pad=0)
-    plt.show()
+# def show_images(images, cmap=None):
+#     cols = 2
+#     rows = (len(images) + 1) // cols
+#
+#     plt.figure(figsize=(10, 11))
+#     for i, image in enumerate(images):
+#         plt.subplot(rows, cols, i + 1)
+#         # use gray scale color map if there is only one channel
+#         cmap = 'gray' if len(image.shape) == 2 else cmap
+#         plt.imshow(image, cmap=cmap)
+#         plt.xticks([])
+#         plt.yticks([])
+#     plt.tight_layout(pad=0, h_pad=0, w_pad=0)
+#     plt.show()
 
 #test_images = [plt.imread(path) for path in glob.glob('test_images/*.jpg')]
 
@@ -502,6 +503,7 @@ def fill_road(image, lines):
 
 
 if  __name__=="__main__":
+    start = timeit.default_timer()
 
     assert len(sys.argv) == 3, "Usage : python execute.py <input_dir> <output_dir>"
 
@@ -519,8 +521,12 @@ if  __name__=="__main__":
     for filename in um_images:
         png_image = png.read_png_int(os.path.join(input_dir, filename))
 
-        y_cb_cr_image = shadow(png_image)
-        blurred_image = apply_smoothing(y_cb_cr_image)
+        # y_cb_cr_image = shadow(png_image)
+        white_yellow_image = select_white_yellow(png_image)
+        gray_image = convert_gray_scale(white_yellow_image)
+        gray_image = thresholding(gray_image)
+        # blurred_image = apply_smoothing(y_cb_cr_image)
+        blurred_image = apply_smoothing(gray_image)
         edge_image = detect_edges(blurred_image)
         roi_image = select_region(edge_image)
         lines = hough_lines(roi_image)
@@ -538,6 +544,9 @@ if  __name__=="__main__":
         result_file_dir = os.path.join(output_dir, "um_lane_"+filename[3:])
         cv2.imwrite(result_file_dir, result_file)
 
-        print(filename, "made result file")
+        # print(filename, "made result file")
 
-    print("Finished")
+    end = timeit.default_timer()
+
+    print("Finished : execution time is ", end-start, "s")
+    print(((end-start)/len(um_images))*1000, "ms per image")
