@@ -1,37 +1,35 @@
 import matplotlib.pyplot as plt
 import cv2
-import os, glob
+import os
 import numpy as np
 import matplotlib._png as png
 import sklearn.linear_model
 import sys
 import timeit
 
-#%matplotlib inline
-#%config InlineBackend.figure_format = 'retina'
+
+def show_images(images, cmap=None):
+    cols = 2
+    rows = (len(images) + 1) // cols
+
+    plt.figure(figsize=(10, 11))
+    for i, image in enumerate(images):
+        plt.subplot(rows, cols, i + 1)
+        # use gray scale color map if there is only one channel
+        cmap = 'gray' if len(image.shape) == 2 else cmap
+        plt.imshow(image, cmap=cmap)
+        plt.xticks([])
+        plt.yticks([])
+    plt.tight_layout(pad=0, h_pad=0, w_pad=0)
+    plt.show()
 
 
-# def show_images(images, cmap=None):
-#     cols = 2
-#     rows = (len(images) + 1) // cols
-#
-#     plt.figure(figsize=(10, 11))
-#     for i, image in enumerate(images):
-#         plt.subplot(rows, cols, i + 1)
-#         # use gray scale color map if there is only one channel
-#         cmap = 'gray' if len(image.shape) == 2 else cmap
-#         plt.imshow(image, cmap=cmap)
-#         plt.xticks([])
-#         plt.yticks([])
-#     plt.tight_layout(pad=0, h_pad=0, w_pad=0)
-#     plt.show()
-
-#test_images = [plt.imread(path) for path in glob.glob('test_images/*.jpg')]
-
-#show_images(test_images)
-
-# image is expected be in RGB color space
 def select_rgb_white_yellow(image):
+
+    """
+    image is expected be in RGB color space
+    """
+
     # white color mask
     lower = np.uint8([200, 200, 200])
     upper = np.uint8([255, 255, 255])
@@ -45,17 +43,14 @@ def select_rgb_white_yellow(image):
     masked = cv2.bitwise_and(image, image, mask = mask)
     return masked
 
-#show_images(list(map(select_rgb_white_yellow, test_images)))
 
 def convert_hsv(image):
     return cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
-#show_images(list(map(convert_hsv, test_images)))
 
 def convert_hls(image):
     return cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
 
-#show_images(list(map(convert_hls, test_images)))
 
 def select_white_yellow(image):
     converted = convert_hls(image)
@@ -71,15 +66,10 @@ def select_white_yellow(image):
     mask = cv2.bitwise_or(white_mask, yellow_mask)
     return cv2.bitwise_and(image, image, mask = mask)
 
-#mask detect only white not yellow
-
-
-#white_yellow_images = list(map(select_white_yellow, test_images))
-
-#show_images(white_yellow_images)
 
 def convert_gray_scale(image):
     return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
 
 def apply_smoothing(image, kernel_size=15):
     """
@@ -87,11 +77,16 @@ def apply_smoothing(image, kernel_size=15):
     """
     return cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
+
 def detect_edges(image, low_threshold=50, high_threshold=150):
     return cv2.Canny(image, low_threshold, high_threshold)
 
 
 def ransac(dots):
+
+    """
+    Do RANSAC algorithm with dots
+    """
 
     if dots is None : return None, None
 
@@ -100,19 +95,20 @@ def ransac(dots):
 
     # Robustly fit linear model with RANSAC algorithm
     ransac = sklearn.linear_model.RANSACRegressor()
-    # ransac.fit(add_square_feature(x), y)
     ransac.fit(x.reshape(-1, 1), y)
-    # inlier_mask = ransac.inlier_mask_
-    # outlier_mask = np.logical_not(inlier_mask)
 
     # Predict data of estimated models
     line_X = np.arange(x.min(), x.max())[:, np.newaxis]
-    # line_y_ransac = ransac.predict(add_square_feature(line_X)).astype(int)
     line_y_ransac = ransac.predict(line_X.reshape(-1, 1)).astype(int)
 
     return line_X.reshape(-1), line_y_ransac
 
+
 def make_line_long(line, image):
+
+    """
+    We know the slope and intercept, we can make line longer
+    """
 
     (o_x1, o_y1), (o_x2, o_y2) = line
 
@@ -136,6 +132,10 @@ def make_line_long(line, image):
 
 def ransac_lane_line(image):
 
+    """
+    Make left and right lines with RANSAC
+    """
+
     left_lines, right_lines = hough_lines_leftright(image)
 
     left_dots, right_dots = lines_to_dots([left_lines, right_lines])
@@ -156,21 +156,6 @@ def ransac_lane_line(image):
 
     return left, right
 
-
-def draw_ransac_lanes(image, left_dots, right_dots):
-    left_x, left_y = left_dots
-    right_x, right_y = right_dots
-
-    image = np.copy(image)  # don't want to modify the original
-
-    if left_x is not None:
-        for x, y in zip(left_x, left_y):
-            image = cv2.circle(image, (x, y), 10, (0, 0, 255), -1)
-    if right_x is not None:
-        for x, y in zip(right_x, right_y):
-            image = cv2.circle(image, (x, y), 10, (0, 0, 255), -1)
-
-    return image
 
 def filter_region(image, vertices):
     """
@@ -208,6 +193,13 @@ def hough_lines(image):
 
 
 def lines_to_dots(lines):
+
+    """
+    There are first and last points in 'lines'
+    RANSAC need many points to approximate
+    So make lines to dots for RANSAC
+    """
+
     left_lines, right_lines = lines
 
     left_lines_dots = None
@@ -226,6 +218,11 @@ def lines_to_dots(lines):
 
 
 def make_dots(line):
+
+    """
+    Make dots from line
+    """
+
     if line is None : return None
 
     x1, y1, x2, y2 = line
@@ -240,7 +237,15 @@ def make_dots(line):
 
     return np.array(dots)
 
+
 def hough_lines_leftright(image):
+
+    """
+    Divide hough lines into two classes : left and right lines
+    if slope is negative, then left line
+    if slope is positive, then right line
+    """
+
     lines = cv2.HoughLinesP(image, rho=1, theta=np.pi / 180, threshold=20, minLineLength=20, maxLineGap=20)
     left_lines = []
     right_lines = []
@@ -256,15 +261,17 @@ def hough_lines_leftright(image):
             intercept = y1 - slope * x1
             length = np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
             if slope < 0:  # y is reversed in image
-                # left_lines.append((slope, intercept))
                 left_lines.append([x1, y1, x2, y2])
             else:
-                # right_lines.append((slope, intercept))
                 right_lines.append([x1, y1, x2, y2])
 
     return [left_lines, right_lines]
 
+
 def draw_lines(image, lines, color=[255, 0, 0], thickness=2, make_copy=True):
+    """
+    Draw lines into 'image'
+    """
     # the lines returned by cv2.HoughLinesP has the shape (-1, 1, 4)
     if make_copy:
         image = np.copy(image) # don't want to modify the original
@@ -278,6 +285,10 @@ def draw_lines(image, lines, color=[255, 0, 0], thickness=2, make_copy=True):
 
 
 def average_slope_intercept(lines):
+    """
+    Make hough result with length weight
+    if length is long, then the line has high weight
+    """
     left_lines = []  # (slope, intercept)
     left_weights = []  # (length,)
     right_lines = []  # (slope, intercept)
@@ -437,6 +448,12 @@ def thresholding(img):
     return cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 
 def detect_lanes(image, hough_line):
+
+    """
+    Do hough detection.
+    If the result didn't find lanes, then do RANSAC
+    """
+
     left_lane, right_lane = lane_lines(image, hough_line)
     if left_lane is None :
         left_lane, _ = ransac_lane_line(image)
@@ -457,6 +474,11 @@ def get_slope(line):
 
 
 def select_lines(lane_lines, o_lane_lines, image):
+    """
+    We made result with whiteyellow result, and with original result.
+    And select good results from both of them.
+    Lines would be straight, so good result's absolute slope would be high.
+    """
 
     left_white, right_white = lane_lines
     left_ori, right_ori = o_lane_lines
@@ -492,6 +514,9 @@ def select_lines(lane_lines, o_lane_lines, image):
 
 
 def fill_road(image, lines):
+    """
+    Make binary result with left and right lines
+    """
     mask = np.zeros_like(image)
     (bottom_left, top_left), (bottom_right, top_right) = lines
 
@@ -521,11 +546,9 @@ if  __name__=="__main__":
     for filename in um_images:
         png_image = png.read_png_int(os.path.join(input_dir, filename))
 
-        # y_cb_cr_image = shadow(png_image)
         white_yellow_image = select_white_yellow(png_image)
         gray_image = convert_gray_scale(white_yellow_image)
         gray_image = thresholding(gray_image)
-        # blurred_image = apply_smoothing(y_cb_cr_image)
         blurred_image = apply_smoothing(gray_image)
         edge_image = detect_edges(blurred_image)
         roi_image = select_region(edge_image)
